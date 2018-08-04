@@ -39,37 +39,46 @@ var UIController = (function() {
 
 // GLOBAL APP CONTROLLER    
 var controller = (function(budgetCtrl, UICtrl) {
-    // CALL THE OBJECT FROM THE UICONTROLLER (USING THE CLOSURE PROVIDED), AND NOW WE CAN ADD THE STRINGS INSIDE THE DOMstrings OBJECT, PUT IT ALL TOGETHER AND CALL IT INSIDE THIS AND OTHER FUNCTIONS
-    var DOM = UICtrl.getDOMstrings();
+
+
+    var setupEventListeners = function() {
+        // CALL THE OBJECT FROM THE UICONTROLLER (USING THE CLOSURE PROVIDED), AND NOW WE CAN ADD THE STRINGS INSIDE THE DOMstrings OBJECT, PUT IT ALL TOGETHER AND CALL IT INSIDE THIS AND OTHER FUNCTIONS
+        var DOM = UICtrl.getDOMstrings();
+
+        document.querySelector(DOM.inputBtn).addEventListener('click', ctrlAddItem);
+
+        document.addEventListener('keypress', function(event) {
+            
+            if(event.keyCode == 13 || event.which === 13) {
+                event.preventDefault();
+                ctrlAddItem();
+            }
+        })        
+    }
 
 
     var ctrlAddItem =  function() {
         // 1. get the field input data
         var input = UICtrl.getInput();
         console.log(input);
+
         // 2. Add the item to the budget controller
         // 3. add the item to the UI
         // 4. Calculate the budget
         // 5. Display the budget on the UI     
     }
 
-    document.querySelector(DOM.inputBtn).addEventListener('click', ctrlAddItem);
-
-    document.addEventListener('keypress', function(event) {
-        
-        if(event.keyCode == 13 || event.which === 13) {
-            event.preventDefault();
-            ctrlAddItem();
+    return {
+        init: function() {
+            console.log('App has started');
+            setupEventListeners();
         }
-
-
-
-    })
+    }
 
 })(budgetController, UIController)
 
 
-
+controller.init();
 
 
 
