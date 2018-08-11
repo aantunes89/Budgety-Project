@@ -22,8 +22,33 @@ var budgetController = (function(){
             exp: 0,
             inc: 0
         }
-    }
+    };
 
+    return {
+        addItem: function(type, des, val) {
+            var newItem, ID;
+
+            //!!!!!!!!!!!THIS IF-ELSE STATEMENT USES THE "TYPE" ARGUMENT TO GENERATE AN "ID" ARGUMENT THAT WILL BE USED IN THE CREATION OF A NEW ITEM (EITHER INCOME OR EXPENSE)!!!!!! SEE THE EXPLANATION IN THE END!!!
+            if(data.allItems[type].length > 0 ) {
+                // this ".id" is the argment in the function constructor!!! since every element in the array will have it, it's accessing it and adding 1 to build the next ID argument.
+                ID = data.allItems[type][data.allItems[type].length - 1].id + 1;
+            } else {
+                ID = 0
+            }
+
+            if(type === 'exp') {
+                newItem = new Expense(ID, des, val);
+            } else if(type === 'inc') {
+                newItem = new Income(ID, des, val);
+            }
+            data.allItems[type].push(newItem);
+            return newItem;
+        },
+
+        testing : function() {
+            console.log(data);
+        }
+    };
 
 })();
 
@@ -43,7 +68,7 @@ var UIController = (function() {
     return {
         getInput :function() {
             return {
-                type: document.querySelector(DOMstrings.inputType).value, //the .value wfill be either inc or exp 
+                type: document.querySelector(DOMstrings.inputType).value, //the .value will be either inc or exp 
                 description: document.querySelector(DOMstrings.inputDescription).value,
                 value: document.querySelector(DOMstrings.inputValue).value
             };   
@@ -51,8 +76,9 @@ var UIController = (function() {
        
         //RETURNED THE OBJECT TO THE GLOBAL SCOPE USING A CLOSURE SO THE CONTROLLER HAVE ACESS TO THE STRINGS, AND CAN ALSO USE IT IN THE SELECTORS
         getDOMstrings : function() {
+            //
             return DOMstrings;
-        }
+        },
     };
 
 })();
@@ -84,11 +110,14 @@ var controller = (function(budgetCtrl, UICtrl) {
 
 
     var ctrlAddItem =  function() {
+        var input, newItem;
         // 1. get the field input data
-        var input = UICtrl.getInput();
+        input = UICtrl.getInput();
         console.log(input); // ERASE IT LATTER!! 
 
         // 2. Add the item to the budget controller
+        newItem = budgetCtrl.addItem(input.type, input.description, input.value);
+        
         // 3. add the item to the UI
         // 4. Calculate the budget
         // 5. Display the budget on the UI     
@@ -109,8 +138,16 @@ controller.init();
 
 
 
+// UNDERSTANDING HOW THE ADDITEM WORKS
+// 1 -step: We changed the name from the  "add_type" OPTIONS CLASSES to "inc and exp" then when we created the data structure in the "budgetControler" we gave the empty arrays the same name, so when we create the function "addItem" whit 3 arguments (type, des, val) the element that is selected from the event handler uses the type (same name in obect and in HTML selection) to access the proper Array (exp or inc)
 
+// 2 -step: After we manage to "reach" the proper array we use this info in a if-else statement to produce(build) a ID.
 
+// 3 -step: Once we "produced" the ID we now have the 3 arguments (id, description and value) needed to produce a new item with the function constructors (Expense or Income), so we used another if-else statement based on the "type" we had before to produce our new item.
+
+// 4 -step: Now we just push this new item into the proper array and returned the new item to the global scope
+
+// STEP-0 IMPORTANT!! In order to all this happens we had to return the 'addItem' function (closure) into the global scope and add it to the event handeler, passing the arguments we produce on the input object(with the ev handler) as the arguments that will "run" the "addItem" method so the hole logic can work! So the type we produce in the ev.handler is the same we'll pass in the addItem (also the other 2 arguments) in the ctrlAddItem method.
 
 
 
