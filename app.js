@@ -1,4 +1,7 @@
-// BUDGET CONTROLLER
+//-------------------------------------------------------------------------//
+//----------------------------BUDGET CONTROLLER----------------------------//
+//-------------------------------------------------------------------------//
+
 var budgetController = (function(){
 
     var Expense = function(id, description, value) {
@@ -13,6 +16,14 @@ var budgetController = (function(){
         this.value = value;
     };
 
+    var calculateTotal = function(type) {
+        var sum = 0;
+        data.allItems[type].forEach(function(cur) {
+            sum += cur.value;
+        });
+        data.totals[type] = sum;
+    }
+
     var data = {
         allItems: {
             exp: [],
@@ -21,8 +32,13 @@ var budgetController = (function(){
         totals: {
             exp: 0,
             inc: 0
-        }
+        },
+        budget: 0,
+        percentage: -1, // the "-1" here we use to tell JS that it's NONEXISTENT (There is no percentage in the begining)
+
     };
+
+    //--------------CLOSURES--------------//
 
     return {
         addItem: function(type, des, val) {
@@ -45,6 +61,33 @@ var budgetController = (function(){
             return newItem;
         },
 
+        calculateBudget: function() {
+            
+            // calculate total income and expenses
+            calculateTotal('exp');
+            calculateTotal('inc');
+
+            // calculate the budget: income - expenses
+            data.budget = data.totals.inc - data.totals.exp;
+
+            // calculate the percentage of income that we spent
+            if(data.totals.inc > 0) {
+                data.percentage = Math.round((data.totals.exp / data.totals.inc) * 100);
+            } else {
+                data.percentage = -1; // the "-1" here we use to tell JS that it's NONEXISTENT (There is no percentage in the begining)
+            }
+            
+        },
+
+        getBudget: function() {
+            return {
+                budget: data.budget,
+                totalInc: data.totals.inc,
+                totalExp: data.totals.exp,
+                percentage: data.percentage
+            }
+        },
+
         testing : function() {
             console.log(data);
         }
@@ -53,8 +96,9 @@ var budgetController = (function(){
 })();
 
 
-
-//UI CONTROLLER
+//---------------------------------------------------------------------//
+//----------------------------UI CONTROLLER----------------------------//
+//---------------------------------------------------------------------//
 var UIController = (function() { 
 
     var DOMstrings = {
@@ -72,7 +116,7 @@ var UIController = (function() {
             return {
                 type: document.querySelector(DOMstrings.inputType).value, //the .value will be either inc or exp 
                 description: document.querySelector(DOMstrings.inputDescription).value,
-                value: document.querySelector(DOMstrings.inputValue).value
+                value: parseFloat(document.querySelector(DOMstrings.inputValue).value) // "parseFloat" turns strings into numbers with decimals.
             };   
         },
        
@@ -116,7 +160,6 @@ var UIController = (function() {
 
         //RETURNED THE OBJECT TO THE GLOBAL SCOPE USING A CLOSURE SO THE CONTROLLER HAVE ACESS TO THE STRINGS, AND CAN ALSO USE IT IN THE SELECTORS
         getDOMstrings : function() {
-            //
             return DOMstrings;
         },
     };
@@ -126,8 +169,10 @@ var UIController = (function() {
 
 
 
+//-----------------------------------------------------------------------------//
+//----------------------------GLOBAL APP CONTROLLER----------------------------//
+//-----------------------------------------------------------------------------//
 
-// GLOBAL APP CONTROLLER    
 var controller = (function(budgetCtrl, UICtrl) {
 
 
@@ -148,24 +193,36 @@ var controller = (function(budgetCtrl, UICtrl) {
         })        
     }
 
+    var updateBudget = function() {
+        // 1. Calculate the budget
+        budgetCtrl.calculateBudget();
+
+        // 2. Return the budget
+        var budget = budgetCtrl.getBudget();
+
+        // 3. Dispaly the budget on the UI
+        console.log(budget);
+    }
 
     var ctrlAddItem =  function() {
         var input, newItem;
         // 1. get the field input data
         input = UICtrl.getInput();
-        console.log(input); // ERASE IT LATTER!! 
 
-        // 2. Add the item to the budget controller
-        newItem = budgetCtrl.addItem(input.type, input.description, input.value);
-        
-        // 3. add the item to the UI
-        UICtrl.addListItem(newItem, input.type);
+        if(input.description !== "" && !isNaN(input.value) && input.value > 0) { // The conditional prevent the user to send items without description, numbers (in the value), and no value (0) FYI "isNaN" is a JS function to check if its a number (return false) or not (true) so we use "double negative".
+            
+            // 2. Add the item to the budget controller
+            newItem = budgetCtrl.addItem(input.type, input.description, input.value);
+            
+            // 3. add the item to the UI
+            UICtrl.addListItem(newItem, input.type);
 
-        // 4. Clear fields
-        UICtrl.clearFields();
+            // 4. Clear fields
+            UICtrl.clearFields();
 
-        // 5. Calculate the budget
-        // 6. Display the budget on the UI     
+            // 5. Calculate and update budget 
+            updateBudget();       
+        }
     };
 
     return {
