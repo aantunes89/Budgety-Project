@@ -171,7 +171,36 @@ var UIController = (function() {
         expensesLabel:'.budget__expenses--value',
         percentageLabel: '.budget__expenses--percentage',
         container: '.container',
-        expensesPerLabel: '.item__percentage'
+        expensesPerLabel: '.item__percentage',
+        dateLabel: '.budget__title--month',
+    };
+
+    var formatNumber = function(num, type) {
+        var num, numSplit, int, dec;
+        /*
+        + or - before number
+        exactly 2 decimal points
+        comma separating the thousands
+
+        2310.4567 -> 2,310.46
+        200 -> 2,000.00
+        */
+
+        num = Math.abs(num);
+        num = num.toFixed(2); // "rounds" the number to only 2 digits after the "."
+
+        numSplit = num.split('.'); // separetes the string in 2, and push both parts into an Array
+
+        int = numSplit[0]; // store the first element of the Array
+        if(int.length > 3) {
+            int = int.substr(0, int.length - 3) + ',' + int.substr(int.length - 3, 3); 
+            // the "substr" method is a method for primitives, like the "toFixed" and the "split" it recive 2 arguments the first is the place where we want to insert something, in this case we concatenate with the "," and the second argument is wat is going to be "readed" afer the change. in this case we used the "lenth - 3" so we can use any number with 4/5 figures or else
+        }
+        // stored the decimals using the previos Array in a variable
+        dec = numSplit[1];
+
+        return (type === 'exp' ? '-' : '+') + int + '.' + dec; // return using the ternary to call the type argument and define if it's a income or expense, than we concatenate with the other parts of the Array.
+
     };
 
     return {
@@ -183,6 +212,7 @@ var UIController = (function() {
             };   
         },
        
+        
         addListItem: function(obj, type) {
             // Create HTML string with placeholder text
             var html, newHtml, element;
@@ -199,7 +229,7 @@ var UIController = (function() {
             // Replace the placeholder text with some actual data
             newHtml = html.replace('%id%', obj.id);
             newHtml = newHtml.replace('%description%', obj.description);
-            newHtml = newHtml.replace('%value%', obj.value);
+            newHtml = newHtml.replace('%value%', formatNumber(obj.value, type)); //used the format private method to "send" the new number properly formated
 
             // Insert the newHTML into te HTML
 
@@ -228,9 +258,12 @@ var UIController = (function() {
         },
 
         displayBudget: function(obj) {
-            document.querySelector(DOMstrings.budgetLabel).textContent = "$" + obj.budget;
-            document.querySelector(DOMstrings.incomeLabel).textContent = "$" + obj.totalInc;
-            document.querySelector(DOMstrings.expensesLabel).textContent = "$" + obj.totalExp;
+            var type;
+            obj.budget >= 0 ? type = 'inc' : type = 'exp';
+
+            document.querySelector(DOMstrings.budgetLabel).textContent = "$" + formatNumber(obj.budget, type);
+            document.querySelector(DOMstrings.incomeLabel).textContent = "$" + formatNumber(obj.totalInc, 'inc');
+            document.querySelector(DOMstrings.expensesLabel).textContent = "$" + formatNumber(obj.totalExp, 'exp');
 
             if(obj.percentage > 0) {
                 document.querySelector(DOMstrings.percentageLabel).textContent = obj.percentage + "%";
@@ -258,6 +291,20 @@ var UIController = (function() {
             });
 
         },
+
+        displayMonth: function() {
+            var now, year, month;
+
+            now = new Date();
+                
+            months = ['January', 'Febuary', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+            // Since it's 0 based, August will be 7, January is 0, and so on.
+            month = now.getMonth();// Returns 7 (month I'm doing this). 
+
+            year = now.getFullYear()// Gets the current year
+            document.querySelector(DOMstrings.dateLabel).textContent = months[month] + ' ' + year ; // Changes the UI
+        },
+
 
         //RETURNED THE OBJECT TO THE GLOBAL SCOPE USING A CLOSURE SO THE CONTROLLER HAVE ACESS TO THE STRINGS, AND CAN ALSO USE IT IN THE SELECTORS
         getDOMstrings : function() {
@@ -369,9 +416,10 @@ var controller = (function(budgetCtrl, UICtrl) {
     return {
         init: function() {
             console.log('App has started');
-            setupEventListeners();
+            UICtrl.displayMonth();
             updateBudget(); 
             // Jonas Resolution is call the "getBudget" content here instead of the updateBudget(), like that: budget: data.budget, totalInc: data.totals.inc,totalExp: data.totals.exp,percentage: data.percentage//
+            setupEventListeners();
         }
     }
 
