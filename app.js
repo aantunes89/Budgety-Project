@@ -8,7 +8,23 @@ var budgetController = (function(){
         this.id = id;
         this.description = description;
         this.value = value;
+        //  There's no problem to define the percentage here becase it's only a atribute, if it was a method it would be better to use inheritance.
+        this.percentage = -1;
     };
+
+    Expense.prototype.calcPercentage = function(totalIncome) {
+        //  Standard inheritance method creation to "define" the percentage for each expense object
+        if(totalIncome > 0){
+            this.percentage = Math.round((this.value / totalIncome) * 100);
+        } else {
+            this.percentage = -1;
+        }
+    };
+
+    Expense.prototype.getPercentage = function() {
+        // this is only to "isolate" the percentages, so can be used latter.
+        return this.percentage;
+    }
 
     var Income = function(id, description, value) {
         this.id = id;
@@ -61,6 +77,31 @@ var budgetController = (function(){
             return newItem;
         },
 
+        deleteItem: function(type, id) {
+            var ids, index;
+
+            // EX: type = inc, id =6
+            //data.allItems[type][id] doesn't work;
+            //[1 2 4 6 8]
+            //index = 3
+            // Problem!! We want to select the element with the id = 6, but it is in the position number 3 (index) so data.allItems[inc][6] would select the 'index = 6' not the 'id = 6'!
+
+            // Build a new Array of id's, to do that, use ".map" and return just the "current element" id (current.id) into a new Array.
+            ids = data.allItems[type].map(function(current) {
+                return current.id; // creating an array only with the id's
+            });
+            
+            // Now that we have a new ids Array that holds only the id number of the objects we store the "indexOf" the id(element) into a new variable.
+            index = ids.indexOf(id); 
+
+
+            if (index !== -1) {
+                // Use splice to remove the element from the array
+                data.allItems[type].splice(index, 1);
+            };
+
+        },
+
         calculateBudget: function() {
             
             // calculate total income and expenses
@@ -76,7 +117,23 @@ var budgetController = (function(){
             } else {
                 data.percentage = -1; // the "-1" here we use to tell JS that it's NONEXISTENT (There is no percentage in the begining)
             }
-            
+        },
+
+        calculatePercentages: function() {
+            data.allItems.exp.forEach(function(cur) {
+                // We looped throug the expenses Array, calling the method from the prototype, and passing the "total.inc" argument, since we want to calculate all the percentages in the array, this method is only to "activate" the "calcPercentage".
+                cur.calcPercentage(data.totals.inc);
+            });
+        },
+
+
+        getPercentages: function() {
+            // creates a new Array "allPerc" "activating" the "getPercentage" in each element, and storing the percentages in a new Array.
+            var allPerc = data.allItems.exp.map(function(cur) {
+                return cur.getPercentage();
+            });
+            // returns the allPerc to the global object, so we can use it in the other controllers.
+            return allPerc;
         },
 
         getBudget: function() {
@@ -112,7 +169,9 @@ var UIController = (function() {
         budgetLabel: '.budget__value',
         incomeLabel: '.budget__income--value',
         expensesLabel:'.budget__expenses--value',
-        percentageLabel: '.budget__expenses--percentage'
+        percentageLabel: '.budget__expenses--percentage',
+        container: '.container',
+        expensesPerLabel: '.item__percentage'
     };
 
     return {
@@ -131,11 +190,11 @@ var UIController = (function() {
             if(type === 'inc') {
                 element = DOMstrings.inputIncome;
 
-                html = '<div class="item clearfix" id="income-%id%"><div class="item__description">%description%</div><div class="right clearfix"><div class="item__value">%value%</div><div class="item__delete"><button class="item__delete--btn"><i class="ion-ios-close-outline"></i></button></div></div></div>';
+                html = '<div class="item clearfix" id="inc-%id%"><div class="item__description">%description%</div><div class="right clearfix"><div class="item__value">%value%</div><div class="item__delete"><button class="item__delete--btn"><i class="ion-ios-close-outline"></i></button></div></div></div>';
             } else if (type === 'exp') {
                 element = DOMstrings.inputExpense;
 
-                html = '<div class="item clearfix" id="expense-%id%"><div class="item__description">%description%</div><div class="right clearfix"><div class="item__value">%value%</div><div class="item__percentage">21%</div><div class="item__delete"><button class="item__delete--btn"><i class="ion-ios-close-outline"></i></button></div></div></div>'
+                html = '<div class="item clearfix" id="exp-%id%"><div class="item__description">%description%</div><div class="right clearfix"><div class="item__value">%value%</div><div class="item__percentage">21%</div><div class="item__delete"><button class="item__delete--btn"><i class="ion-ios-close-outline"></i></button></div></div></div>'
             };
             // Replace the placeholder text with some actual data
             newHtml = html.replace('%id%', obj.id);
@@ -146,6 +205,12 @@ var UIController = (function() {
 
             document.querySelector(element).insertAdjacentHTML('beforeend', newHtml);
 
+        },
+
+        deleteListItem: function(selectorID) {
+            var el;
+            el = document.getElementById(selectorID);
+            el.parentNode.removeChild(el);
         },
 
         clearFields: function() {
@@ -172,6 +237,26 @@ var UIController = (function() {
             } else {
                 document.querySelector(DOMstrings.percentageLabel).textContent = "---";
             }
+        },
+
+        displayPercentages : function(percentages) {
+            var fields = document.querySelectorAll(DOMstrings.expensesPerLabel);
+            
+            var nodeListForEach = function(list, callback) {
+                for (var i = 0; i < list.length; i++) {
+                    callback(list[i], i);
+                }
+            }
+
+            nodeListForEach(fields, function(current, index) {
+                
+                if(percentages[index] > 0){
+                    current.textContent = percentages[index] + "%";
+                } else {
+                    current.textContent = '---';
+                }
+            });
+
         },
 
         //RETURNED THE OBJECT TO THE GLOBAL SCOPE USING A CLOSURE SO THE CONTROLLER HAVE ACESS TO THE STRINGS, AND CAN ALSO USE IT IN THE SELECTORS
@@ -206,7 +291,9 @@ var controller = (function(budgetCtrl, UICtrl) {
                 event.preventDefault();
                 ctrlAddItem();
             }
-        })        
+        });
+        
+        document.querySelector(DOM.container).addEventListener('click', ctrlDeleteItem);
     }
 
     var updateBudget = function() {
@@ -219,7 +306,17 @@ var controller = (function(budgetCtrl, UICtrl) {
         // 3. Dispaly the budget on the UI
         console.log(budget);
         UICtrl.displayBudget(budget);
-    }
+    };
+
+    var updatePercentages = function() {
+        // 1 Calculate percentages
+        budgetCtrl.calculatePercentages();
+        // 2 Read(access) percentages from the Budget Controller
+        var percentages = budgetCtrl.getPercentages();
+        // 3 Update the UI with the percentages
+        UICtrl.displayPercentages(percentages);
+    };
+
 
     var ctrlAddItem =  function() {
         var input, newItem;
@@ -239,6 +336,33 @@ var controller = (function(budgetCtrl, UICtrl) {
 
             // 5. Calculate and update budget 
             updateBudget();       
+
+            // 6. Calculate and update the percentages
+            updatePercentages()
+        }
+
+    };
+
+    var ctrlDeleteItem = function(event) {
+        var itemID, splitID, type, ID;
+
+        itemID = event.target.parentNode.parentNode.parentNode.parentNode.id;
+
+        if(itemID) {
+
+            //inc-1 this is an example of the ID we are reaching for in the itemID
+            splitID = itemID.split('-'); // this method splits the strings in two, using the reference we gave, returning an array of 2 strings
+            type = splitID[0];
+            ID = parseInt(splitID[1]);
+
+            // 1. delete the item from the data structure
+            budgetCtrl.deleteItem(type, ID);
+            // 2. delete the item from the UI
+            UICtrl.deleteListItem(itemID);
+            // 3. Update and show the new budget
+            updateBudget();
+            // 4. Calculate and update the percentages
+            updatePercentages()
         }
     };
 
@@ -269,18 +393,6 @@ controller.init();
 // 4 -step: Now we just push this new item into the proper array and returned the new item to the global scope
 
 // STEP-0 IMPORTANT!! In order to all this happens we had to return the 'addItem' function (closure) into the global scope and add it to the event handeler, passing the arguments we produce on the input object(with the ev handler) as the arguments that will "run" the "addItem" method so the hole logic can work! So the type we produce in the ev.handler is the same we'll pass in the addItem (also the other 2 arguments) in the ctrlAddItem method.
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
